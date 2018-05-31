@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2006
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{11710B4D-21B8-42BC-B128-6DF2B380A352}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicSQLParser", "ConsoleApp1\DynamicSQLParser.csproj", "{11710B4D-21B8-42BC-B128-6DF2B380A352}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

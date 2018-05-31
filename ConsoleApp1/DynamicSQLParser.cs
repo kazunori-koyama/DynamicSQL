@@ -1,4 +1,5 @@
 ﻿using ConsoleApp1.Extensions;
+using DynamicSQLParser;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,6 +17,88 @@ namespace ConsoleApp1
     //''' <remarks></remarks>
     public class DynamicSQLParser
     {
+        
+        private const string PARAM_CODE = "/\\*ds (?<hard>\\$?)(?<name>[^ ]+)\\*/(?<dummy>[^ ]+)(?<space> ?)";
+
+        List<ISQLStatement> BuildDynamicSQL(string sqlTemplate, Dictionary<string, object> param, string prefix)
+        {
+            var sqlTemplateArray = sqlTemplate.Split(new string[]{"\r\n"}, StringSplitOptions.None);
+            var sqlStatementList = new List<ISQLStatement>();
+
+            int i = 0;
+
+            Func<IfBlockSQL> loadIfBlock = null;
+            loadIfBlock = () =>
+            {
+                var ifBlockSQL = new IfBlockSQL();
+                ifBlockSQL.StartIfSQL = sqlTemplateArray[i];
+
+                while (true)
+                {
+                    i++;
+                    if (sqlTemplateArray[i].TrimStart().StartsWith("/*ds if"))
+                    {
+                        // If文がネストしている場合、再起呼び出し
+                        ifBlockSQL.StatementList.Add(loadIfBlock());
+                    }
+                    else if (sqlTemplateArray[i].TrimStart().StartsWith("/*ds end if"))
+                    {
+                        ifBlockSQL.EndIfSQL = sqlTemplateArray[i];
+                        return ifBlockSQL;
+                    }
+                    else
+                    {
+                        var m = Regex.Match(sqlTemplateArray[i], PARAM_CODE, RegexOptions.IgnoreCase);
+
+                        if (m.Success)
+                        {
+                            // IFブロックではないパラメータが入っているSQLの処理
+                            var ps = new ParameterSQL();
+                            ps.SQLString = sqlTemplateArray[i];
+                            ifBlockSQL.StatementList.Add(ps);
+                        }
+                        else
+                        {
+                            // 静的なSQL
+                            var st = new StaticSQL();
+                            st.SQLString = sqlTemplateArray[i];
+                            ifBlockSQL.StatementList.Add(st);
+                        }
+                    }
+                }
+
+                //' ここに来たらif …> end ifの対応がおかしい
+                throw new Exception("/*ds if */ と /*ds end if*/ の数が正しくないか、不正なネストになっている可能性があります。");
+
+            };
+
+            for (i = 0; i < sqlTemplateArray.Length - 1; i++)
+            {
+                var line = sqlTemplateArray[i];
+                var m = Regex.Match(line, PARAM_CODE, RegexOptions.IgnoreCase);
+
+                if (m.Success)
+                {
+                    // IFブロックではないパラメータが入っているSQLの処理
+                    var ps = new ParameterSQL();
+                    ps.SQLString = sqlTemplateArray[i];
+                    sqlStatementList.Add(ps);
+                }
+                else if (line.TrimStart().StartsWith("/*ds if"))
+                {
+                    sqlStatementList.Add(loadIfBlock());
+                }
+                else
+                {
+                    // 静的なSQL
+                    var st = new StaticSQL();
+                    st.SQLString = sqlTemplateArray[i];
+                    sqlStatementList.Add(st);
+                }
+            }
+
+            return sqlStatementList;
+        }
 
         //''' <summary>
         //''' DBコマンドを作成します
